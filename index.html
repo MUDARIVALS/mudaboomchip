@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💣 무다의 폭탄칩 게임!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: "Jua", sans-serif; font-weight: 400; font-style: normal; box-sizing: border-box; }
+        body { background-color: #1e1e24; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        h1 { color: #ff4757; margin-bottom: 5px; font-size: 2.5rem; text-shadow: 2px 2px 0px #000; }
+        #user-bar { display: none; font-size: 1.3rem; color: #2ed573; margin-bottom: 15px; font-weight: bold; }
+        
+        .auth-container, .room-container { background-color: #2f3542; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; width: 340px; margin-bottom: 20px; }
+        .auth-container h2, .room-container h2 { margin-top: 0; color: #ff4757; font-size: 1.8rem; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 1rem; color: #a4b0be; }
+        .input-group input, .input-group textarea { width: 100%; padding: 10px; border-radius: 6px; border: 2px solid #57606f; background-color: #1e1e24; color: white; font-size: 1rem; }
+        .input-group textarea { height: 80px; resize: none; }
+        
+        #login-error-msg { color: #ff4757; font-size: 0.95rem; margin-top: -10px; margin-bottom: 15px; text-align: left; display: none; }
+        .remember-group { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-size: 0.95rem; color: #ffa502; cursor: pointer; user-select: none; }
+        .remember-group input { cursor: pointer; width: 16px; height: 16px; }
+        .auth-toggle { margin-top: 15px; font-size: 1rem; color: #ffa502; cursor: pointer; text-decoration: underline; }
+        
+        #game-screen { display: none; flex-direction: column; align-items: center; }
+        #status { font-size: 1.4rem; margin-bottom: 20px; font-weight: bold; color: #ffa502; min-height: 50px; text-align: center; white-space: pre-line; }
+        .hearts { font-size: 1.5rem; color: #ff4757; margin-top: 5px; letter-spacing: 2px; }
+        
+        .game-container { display: flex; gap: 40px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+        .player-area { background-color: #2f3542; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); text-align: center; width: 260px; border: 3px solid transparent; transition: border 0.3s; }
+        .player-area h3 { font-size: 1.3rem; margin: 5px 0; }
+        .player-area.active { border: 3px solid #ff4757; }
+        
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .chip { width: 70px; height: 70px; background-color: #747d8c; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; cursor: pointer; user-select: none; transition: transform 0.2s, background-color 0.2s; border: 3px solid #57606f; color: #fff; }
+        .chip:hover:not(.disabled) { transform: scale(1.05); background-color: #a4b0be; }
+        .chip.setup-bomb { background-color: #ff4757; border-color: #ff6b81; }
+        .chip.hidden-mode { background-color: #2ed573; border-color: #26af5f; }
+        .chip.safe { background-color: #2ed573 !important; cursor: default; }
+        .chip.exploded { background-color: #ff4757 !important; font-size: 2.2rem; cursor: default; animation: shake 0.3s ease-in-out; }
+        .chip.disabled { cursor: default; opacity: 0.6; }
+        
+        button { padding: 12px 24px; font-size: 1.2rem; background-color: #ff4757; color: white; border: none; border-radius: 8px; cursor: pointer; transition: background 0.2s; width: 100%; margin-top: 5px; box-shadow: 0 4px 0px #c0392b; }
+        button:active { transform: translateY(4px); box-shadow: none; }
+        button:hover { background-color: #ff6b81; }
+        .btn-secondary { background-color: #57606f; box-shadow: 0 4px 0px #343a40; }
+        .btn-secondary:hover { background-color: #747d8c; }
+        
+        /* 어드민 권력 패널 스타일 */
+        #admin-panel { display: none; background: linear-gradient(135deg, #2c3e50, #130f40); padding: 20px; border-radius: 12px; width: 100%; max-width: 560px; box-shadow: 0 4px 20px rgba(255, 165, 0, 0.4); border: 2px dashed #ffa502; margin-top: 15px; text-align: center; }
+        #admin-panel h2 { margin: 0 0 15px 0; color: #ffa502; font-size: 1.5rem; text-shadow: 1px 1px 2px #000; }
+        .admin-controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+        .admin-btn { background-color: #ffa502; color: #1e1e24; font-weight: bold; font-size: 1rem; width: auto; min-width: 130px; box-shadow: 0 4px 0px #d35400; }
+        .admin-btn:hover { background-color: #ffb142; }
+        .admin-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    </style>
+</head>
+<body>
+    <h1>💣 무다의 폭탄칩 게임!</h1>
+    <div id="user-bar"></div>
+
+    <div id="auth-screen" class="auth-container">
+        <div id="login-form">
+            <h2>로그인</h2>
+            <div class="input-group"><label>아이디</label><input type="text" id="login-id" placeholder="여기를 클릭하여 입력하세요"></div>
+            <div class="input-group"><label>비밀번호</label><input type="password" id="login-pw" placeholder="여기를 클릭하여 입력하세요"></div>
+            <div id="login-error-msg">이 계정은 유효하지 않거나 잘못되었습니다!</div>
+            <label class="remember-group"><input type="checkbox" id="login-remember"> 이 계정을 이 기기에 저장</label>
+            <button onclick="handleLogin()">로그인</button>
+            <div class="auth-toggle" onclick="toggleAuthForm(false)">회원가입 하러가기</div>
+        </div>
+        <div id="register-form" style="display: none;">
+            <h2>회원가입</h2>
+            <div class="input-group"><label>이름 (닉네임)</label><input type="text" id="reg-name" placeholder="여기를 클릭하여 입력하세요"></div>
+            <div class="input-group"><label>아이디</label><input type="text" id="reg-id" placeholder="여기를 클릭하여 입력하세요"></div>
+            <div class="input-group"><label>비밀번호</label><input type="password" id="reg-pw" placeholder="여기를 클릭하여 입력하세요"></div>
+            <button onclick="handleRegister()">가입하기</button>
+            <div class="auth-toggle" onclick="toggleAuthForm(true)">로그인 하러가기</div>
+        </div>
+    </div>
+
+    <div id="room-screen" class="room-container" style="display:none;">
+        <h2>온라인 대결 설정</h2>
+        <p style="font-size:0.9rem; color:#a4b0be; margin-bottom: 20px;">WebRTC 기술을 이용해 일대일로 직접 연결합니다.</p>
+        <div id="mode-selection">
+            <button onclick="initP2P('host')">방 만들기 (Host)</button>
+            <button class="btn-secondary" onclick="initP2P('guest')" style="margin-top:15px;">방 참가하기 (Guest)</button>
+            <button class="btn-secondary" onclick="handleLogout()" style="margin-top:15px; background-color: #7f8c8d; box-shadow: 0 4px 0px #5c6366;">로그아웃</button>
+        </div>
+        <div id="host-panel" style="display:none; margin-top:15px;">
+            <div class="input-group"><label>1. 나의 연결 코드 (복사해서 상대에게 전송)</label><textarea id="host-offer" readonly onclick="this.select()"></textarea></div>
+            <div class="input-group"><label>2. 상대방의 응답 코드 붙여넣기</label><textarea id="host-answer-input" placeholder="상대방이 준 응답 코드를 여기에 붙여넣으세요"></textarea></div>
+            <button onclick="connectHost()">연결 완료하기</button>
+        </div>
+        <div id="guest-panel" style="display:none; margin-top:15px;">
+            <div class="input-group"><label>1. 방장의 연결 코드 붙여넣기</label><textarea id="guest-offer-input" placeholder="방장이 복사해 준 코드를 여기에 붙여넣으세요"></textarea></div>
+            <button onclick="generateGuestAnswer()">응답 코드 생성하기</button>
+            <div class="input-group" id="guest-answer-area" style="display:none; margin-top:15px;"><label>2. 나의 응답 코드 (복사해서 방장에게 전송)</label><textarea id="guest-answer" readonly onclick="this.select()"></textarea></div>
+        </div>
+    </div>
+
+    <div id="game-screen">
+        <div id="status">상대방을 기다리는 중...</div>
+        <div class="game-container">
+            <div id="my-area" class="player-area"><h3 id="my-name">나</h3><div id="my-hearts" class="hearts">❤️❤️❤️</div><div id="my-grid" class="grid"></div></div>
+            <div id="opp-area" class="player-area"><h3 id="opp-name">상대방</h3><div id="opp-hearts" class="hearts">❤️❤️❤️</div><div id="opp-grid" class="grid"></div></div>
+        </div>
+        
+        <div id="admin-panel">
+            <h2>👑 어드민 (권력) 패널</h2>
+            <div class="admin-controls">
+                <button class="admin-btn" onclick="adminModifyHearts('my', 1)">내 하트 +1</button>
+                <button class="admin-btn" onclick="adminModifyHearts('opp', -1)">상대 하트 -1</button>
+                <button class="admin-btn" onclick="adminExpandBombs()">내 폭탄한도 확장 (5개)</button>
+                <button class="admin-btn" onclick="adminRevealOpponent()" style="background-color: #ff4757; color: white; box-shadow: 0 4px 0px #b33939;">상대폭탄 투시 (핵)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() { 
+            const savedUser = localStorage.getItem("saved_login_session"); 
+            if (savedUser) { 
+                const user = JSON.parse(savedUser); 
+                loginSuccess(user.name, user.id); 
+            } 
+        };
+        let loggedInUser = "플레이어";
+        let loggedInId = "";
+        let maxBombCount = 3; 
+
+        function toggleAuthForm(showLogin) { document.getElementById('login-form').style.display = showLogin ? 'block' : 'none'; document.getElementById('register-form').style.display = showLogin ? 'none' : 'block'; document.getElementById('login-error-msg').style.display = 'none'; }
+        function handleRegister() { const name = document.getElementById('reg-name').value.trim(); const id = document.getElementById('reg-id').value.trim(); const pw = document.getElementById('reg-pw').value.trim(); if (!name || !id || !pw) return alert('모든 필드를 입력해주세요!'); if (id === 'admin@paper.com') return alert('이 아이디는 고정 어드민 계정으로 사용할 수 없습니다.'); if (localStorage.getItem('user_' + id)) return alert('이미 존재하는 아이디입니다.'); localStorage.setItem('user_' + id, JSON.stringify({ name, id, pw })); alert('회원가입 성공! 로그인 해주세요.'); toggleAuthForm(true); }
+        
+        function handleLogin() { 
+            const id = document.getElementById('login-id').value.trim(); 
+            const pw = document.getElementById('login-pw').value.trim(); 
+            const errorMsg = document.getElementById('login-error-msg'); 
+            errorMsg.style.display = 'none'; 
+            
+            if (id === 'admin@paper.com' && pw === '1234567') {
+                if (document.getElementById('login-remember').checked) {
+                    localStorage.setItem("saved_login_session", JSON.stringify({ name: "무다", id: id }));
+                }
+                loginSuccess("무다", id);
+                return;
+            }
+            
+            const stored = localStorage.getItem('user_' + id); 
+            if (!stored) { errorMsg.style.display = 'block'; return; } 
+            const user = JSON.parse(stored); 
+            if (user.pw !== pw) { errorMsg.style.display = 'block'; return; } 
+            if (document.getElementById('login-remember').checked) { 
+                localStorage.setItem("saved_login_session", JSON.stringify({ name: user.name, id: id })); 
+            } 
+            loginSuccess(user.name, id); 
+        }
+        
+        function loginSuccess(name, id) { 
+            loggedInUser = name; 
+            loggedInId = id;
+            document.getElementById('auth-screen').style.display = 'none'; 
+            document.getElementById('room-screen').style.display = 'block'; 
+            document.getElementById('user-bar').style.display = 'block'; 
+            
+            if (id === 'admin@paper.com') {
+                document.getElementById('user-bar').innerText = '👑 무다님, 환영합니다!';
+                document.getElementById('my-name').innerText = "무다 (나)";
+                document.getElementById('admin-panel').style.display = 'block';
+            } else {
+                document.getElementById('user-bar').innerText = '👋 ' + loggedInUser + '님, 환영합니다!';
+                document.getElementById('my-name').innerText = loggedInUser + " (나)";
+                document.getElementById('admin-panel').style.display = 'none';
+            }
+        }
+        
+        function handleLogout() { localStorage.removeItem("saved_login_session"); document.getElementById('room-screen').style.display = 'none'; document.getElementById('user-bar').style.display = 'none'; document.getElementById('auth-screen').style.display = 'block'; document.getElementById('login-id').value = ''; document.getElementById('login-pw').value = ''; document.getElementById('login-remember').checked = false; document.getElementById('mode-selection').style.display = 'block'; document.getElementById('host-panel').style.display = 'none'; document.getElementById('guest-panel').style.display = 'none'; document.getElementById('admin-panel').style.display = 'none'; maxBombCount = 3; if (peerConnection) peerConnection.close(); }
+        
+        let peerConnection; let dataChannel; let myRole = ""; 
+        // 다중 구글 공용 STUN 서버 인프라 지정
+        const configuration = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun2.l.google.com:19302"] }] };
+        
+        function initP2P(role) { 
+            myRole = role; 
+            document.getElementById('mode-selection').style.display = 'none'; 
+            peerConnection = new RTCPeerConnection(configuration); 
+            
+            peerConnection.onicecandidate = e => { 
+                // 후보가 계속 수집될 때마다 혹은 최종 완료되었을 때 화면에 즉각 최신화 반영
+                updateLocalDescriptionBox();
+            }; 
+            
+            if (role === 'host') { 
+                document.getElementById('host-panel').style.display = 'block'; 
+                dataChannel = peerConnection.createDataChannel("gameChannel"); 
+                setupDataChannel(); 
+                peerConnection.createOffer().then(offer => {
+                    return peerConnection.setLocalDescription(offer);
+                }).then(() => {
+                    // 🚀 방 만들자마자 대기하지 않고 즉시 코드 강제 노출
+                    updateLocalDescriptionBox();
+                }); 
+            } else { 
+                document.getElementById('guest-panel').style.display = 'block'; 
+                peerConnection.ondatachannel = e => { 
+                    dataChannel = e.channel; 
+                    setupDataChannel(); 
+                }; 
+            } 
+        }
+
+        function updateLocalDescriptionBox() {
+            if (!peerConnection.localDescription) return;
+            const base64Code = btoa(JSON.stringify(peerConnection.localDescription));
+            if (myRole === 'host') { 
+                document.getElementById('host-offer').value = base64Code; 
+            } else if (myRole === 'guest') { 
+                document.getElementById('guest-answer-area').style.display = 'block'; 
+                document.getElementById('guest-answer').value = base64Code; 
+            }
+        }
+
+        function connectHost() { const answerText = document.getElementById('host-answer-input').value.trim(); if(!answerText) return alert("응답 코드를 입력해주세요."); try { const answer = new RTCSessionDescription(JSON.parse(atob(answerText))); peerConnection.setRemoteDescription(answer); } catch(e) { alert("코드가 올바르지 않습니다. 다시 확인해주세요."); } }
+        function generateGuestAnswer() { const offerText = document.getElementById('guest-offer-input').value.trim(); if(!offerText) return alert("방장의 코드를 입력해주세요."); try { const offer = new RTCSessionDescription(JSON.parse(atob(offerText))); peerConnection.setRemoteDescription(offer).then(() => { return peerConnection.createAnswer(); }).then(answer => { return peerConnection.setLocalDescription(answer); }).then(() => { updateLocalDescriptionBox(); }); } catch(e) { alert("코드가 올바르지 않습니다. 다시 확인해주세요."); } }
+        function setupDataChannel() { dataChannel.onopen = () => { document.getElementById('room-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'flex'; sendNetData({ type: 'INIT_NAME', name: (loggedInId === 'admin@paper.com' ? "무다" : loggedInUser) }); }; dataChannel.onmessage = e => handleNetMessage(JSON.parse(e.data)); }
+        function sendNetData(obj) { if (dataChannel && dataChannel.readyState === "open") { dataChannel.send(JSON.stringify(obj)); } }
+        
+        const CHIP_COUNT = 9; let gameState = 'SETUP'; let myBombs = []; let oppBombs = []; let myLives = 3; let oppLives = 3; let isMyTurn = false; let oppName = "상대방"; const statusText = document.getElementById('status'); const myGrid = document.getElementById('my-grid'); const oppGrid = document.getElementById('opp-grid');
+        function drawGrids() { myGrid.innerHTML = ''; oppGrid.innerHTML = ''; for (let i = 0; i < CHIP_COUNT; i++) { const myChip = document.createElement('div'); myChip.className = 'chip disabled'; myChip.innerText = '●'; myChip.id = `my-chip-${i}`; myChip.onclick = () => handleMyGridSetup(i, myChip); myGrid.appendChild(myChip); const oppChip = document.createElement('div'); oppChip.className = 'chip disabled'; oppChip.innerText = '●'; oppChip.id = `opp-chip-${i}`; oppChip.onclick = () => handleOppGridClick(i, oppChip); oppGrid.appendChild(oppChip); } updateHeartsDisplay(); }
+        function updateHeartsDisplay() { 
+            const mySafeLives = Math.max(0, myLives);
+            const oppSafeLives = Math.max(0, oppLives);
+            document.getElementById('my-hearts').innerText = "❤️".repeat(mySafeLives) + "💔".repeat(Math.max(0, 3 - mySafeLives)); 
+            document.getElementById('opp-hearts').innerText = "❤️".repeat(oppSafeLives) + "💔".repeat(Math.max(0, 3 - oppSafeLives)); 
+        }
+        function handleMyGridSetup(index, chip) { if (gameState !== 'SETUP') return; const idx = myBombs.indexOf(index); if (idx > -1) { myBombs.splice(idx, 1); chip.classList.remove('setup-bomb'); } else { if (myBombs.length < maxBombCount) { myBombs.push(index); chip.classList.add('setup-bomb'); } } if (myBombs.length === maxBombCount) { gameState = 'WAIT_OPP_SETUP'; statusText.innerText = `내 폭탄 배치 완료 (${maxBombCount}개)!\n상대방이 배치를 마칠 때까지 기다려주세요.`; Array.from(myGrid.children).forEach(c => { c.classList.add('disabled'); if(c.classList.contains('setup-bomb')) { c.style.backgroundColor = '#4b5563'; } }); sendNetData({ type: 'SETUP_DONE' }); checkBothReady(); } }
+        let isOppReady = false;
+        function handleOppGridClick(index, chip) { if (gameState !== 'PLAYING' || !isMyTurn) return; if (chip.classList.contains('safe') || chip.classList.contains('exploded')) return; isMyTurn = false; sendNetData({ type: 'CLICK_CHIP', index: index }); }
+        
+        function handleNetMessage(data) {
+            if (data.type === 'INIT_NAME') { oppName = data.name; document.getElementById('opp-name').innerText = oppName + " (상대)"; drawGrids(); gameState = 'SETUP'; statusText.innerText = "⭐ 칩을 선택해 내 진영에 폭탄을 숨기세요!"; Array.from(myGrid.children).forEach(c => c.classList.remove('disabled')); }
+            else if (data.type === 'SETUP_DONE') { isOppReady = true; checkBothReady(); }
+            else if (data.type === 'START_GAME') { isMyTurn = data.firstPlayer === myRole; oppBombs = data.oppBombs; gameState = 'PLAYING'; Array.from(oppGrid.children).forEach(c => { c.classList.remove('disabled'); c.classList.add('hidden-mode'); }); updateTurnMessage(); }
+            else if (data.type === 'CHIP_RESULT') {
+                const isHit = data.isHit; const attacker = data.attacker; const idx = data.index;
+                if (attacker === myRole) { const chip = document.getElementById(`opp-chip-${idx}`); chip.classList.remove('hidden-mode'); if (isHit) { chip.classList.add('exploded'); chip.innerText = '💣'; oppLives = data.oppLives; } else { chip.classList.add('safe'); chip.innerText = '❌'; } }
+                else { const chip = document.getElementById(`my-chip-${idx}`); if (isHit) { chip.classList.add('exploded'); chip.innerText = '💣'; myLives = data.myLives; } else { chip.classList.add('safe'); chip.innerText = '❌'; } }
+                updateHeartsDisplay();
+                if (data.isGameOver) {
+                    gameState = 'END'; document.getElementById('my-area').classList.remove('active'); document.getElementById('opp-area').classList.remove('active');
+                    let winnerRealName = data.winner === myRole ? (loggedInId === 'admin@paper.com' ? "무다" : loggedInUser) : oppName;
+                    statusText.innerText = "🏆 " + winnerRealName + "님이 승리했습니다!!"; return;
+                }
+                isMyTurn = (data.nextTurn === myRole); updateTurnMessage();
+            }
+            else if (data.type === 'CLICK_CHIP') { if (myRole === 'host') { processTurnAction(data.index, 'guest'); } else { sendNetData({ type: 'GUEST_CHECK_REPLY', index: data.index }); } }
+            else if (data.type === 'GUEST_CHECK_REPLY' && myRole === 'host') { processTurnAction(data.index, 'host'); }
+            else if (data.type === 'REQUEST_GUEST_BOMBS') { sendNetData({ type: 'REPLY_GUEST_BOMBS', bombs: myBombs }); } 
+            else if (data.type === 'REPLY_GUEST_BOMBS') { oppBombs = data.bombs; }
+            else if (data.type === 'ADMIN_SYNC_HEARTS') { myLives = data.oppLives; oppLives = data.myLives; updateHeartsDisplay(); checkAdminGameOver(); }
+        }
+        
+        function checkBothReady() { if (gameState === 'WAIT_OPP_SETUP' && isOppReady) { if (myRole === 'host') { const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest'; sendNetData({ type: 'START_GAME', firstPlayer: firstPlayer, oppBombs: myBombs }); isMyTurn = (firstPlayer === 'host'); gameState = 'PLAYING'; Array.from(oppGrid.children).forEach(c => { c.classList.remove('disabled'); c.classList.add('hidden-mode'); }); sendNetData({ type: 'REQUEST_GUEST_BOMBS' }); } } }
+        function processTurnAction(targetIdx, attackerRole) {
+            let isHit = false; if (attackerRole === 'host') { if (oppBombs.includes(targetIdx)) isHit = true; if (isHit) oppLives--; } else { if (myBombs.includes(targetIdx)) isHit = true; if (isHit) myLives--; }
+            let isGameOver = (myLives <= 0 || oppLives <= 0); let winner = ''; if (isGameOver) { winner = myLives <= 0 ? 'guest' : 'host'; }
+            const nextTurn = attackerRole === 'host' ? 'guest' : 'host';
+            const resultPayload = { type: 'CHIP_RESULT', index: targetIdx, attacker: attackerRole, isHit: isHit, myLives: myLives, oppLives: oppLives, isGameOver: isGameOver, winner: winner, nextTurn: nextTurn };
+            handleNetMessage(resultPayload); sendNetData(resultPayload);
+        }
+        function updateTurnMessage() {
+            if (isMyTurn) { statusText.innerText = `🎯 내 차례입니다!\n[${oppName}] 진영의 칩을 고르세요.`; document.getElementById('my-area').classList.remove('active'); document.getElementById('opp-area').classList.add('active'); }
+            else { statusText.innerText = `⏳ 상대방(${oppName})의 차례입니다.\n신중하게 기다리세요...`; document.getElementById('opp-area').classList.remove('active'); document.getElementById('my-area').classList.add('active'); }
+        }
+
+        /* 👑 어드민 권력 스크립트 */
+        function adminModifyHearts(target, amount) {
+            if (gameState === 'SETUP' || gameState === 'WAIT_OPP_SETUP') return alert("게임이 시작된 후에 사용 가능합니다.");
+            if (target === 'my') { myLives += amount; } else { oppLives += amount; }
+            updateHeartsDisplay();
+            sendNetData({ type: 'ADMIN_SYNC_HEARTS', myLives: myLives, oppLives: oppLives });
+            checkAdminGameOver();
+        }
+        function adminExpandBombs() {
+            if (gameState !== 'SETUP') return alert("폭탄을 고르는 배치 단계(SETUP)에서만 확장 가능합니다.");
+            maxBombCount = 5;
+            statusText.innerText = "👑 어드민 권력: 폭탄 한도가 5개로 늘어났습니다!\n내 진영 칩을 5개 골라 배치하세요.";
+        }
+        function adminRevealOpponent() {
+            if (gameState !== 'PLAYING') return alert("대결이 활성화된 상태에서만 투시경을 켤 수 있습니다.");
+            if (oppBombs.length === 0) return alert("상대방 폭탄 데이터가 아직 수신되지 않았습니다.");
+            oppBombs.forEach(idx => {
+                const chip = document.getElementById(`opp-chip-${idx}`);
+                if (!chip.classList.contains('exploded') && !chip.classList.contains('safe')) {
+                    chip.style.border = "3px dashed #ff4757";
+                    chip.innerText = "❌"; 
+                }
+            });
+            alert("상대방 진영의 폭탄 칩 위치에 ❌ 표기 및 점선 테두리가 활성화되었습니다!");
+        }
+        function checkAdminGameOver() {
+            if (myLives <= 0 || oppLives <= 0) {
+                gameState = 'END';
+                let winner = myLives <= 0 ? 'guest' : 'host';
+                let winnerRealName = winner === myRole ? "무다" : oppName;
+                statusText.innerText = "🏆 [종료] " + winnerRealName + "님이 승리했습니다!!";
+                sendNetData({ type: 'CHIP_RESULT', index: -1, attacker: myRole, isHit: false, myLives: myLives, oppLives: oppLives, isGameOver: true, winner: winner, nextTurn: 'none' });
+            }
+        }
+    </script>
+</body>
+</html>
